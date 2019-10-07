@@ -2,77 +2,66 @@ module channel
 
 import sync
 
+struct Chan {
+mut:
+	val string
+
+	s_wait bool
+	s_mu sync.Mutex
+	s_wg sync.WaitGroup
+
+	r_wait bool
+	r_mu sync.Mutex
+	r_wg sync.WaitGroup
+}
+
 pub fn new_chan() &Chan {
-	c := &Chan{
-		hear_val: ''
-		send_ready: false
-		receive_ready: false
+	mut c := &Chan{
+		val: ''
 	}
+
+	c.s_wg.add(1)
+	c.r_wg.add(1)
 
 	return c
 }
 
-pub fn listen(c mut Chan) {
-	i := c.hear()
 
-	println('???')
-	println(i)
-	println('!!!')
-}
+pub fn (c mut Chan) send(payload string) {
+	c.s_mu.lock() // prevent other senders. if recieved, safe to mutate.
 
-// interface Anyer {}
-struct Chan {
-mut:
-	send_guard sync.Mutex
-	hear_guard sync.Mutex
-	ready_sig  sync.Mutex
+	// err check
+	c.s_wait = true // tells close the step incremented
+	c.r_wg.wait() // detect recv exists
+	c.s_wait = false // tells close we've passed the wait that might've needed help.
 
-	/* hear_val []byte */
-	hear_val string
-	send_ready bool
-	receive_ready bool
-}
+	c.r_wg.add(1) // block next sender for recv
 
-/* fn (c mut Chan) send(a []byte) { */
-fn (c mut Chan) send(a string) {
-	c.send_guard.lock() // prevent other senders. if recieved, safe to mutate.
-	c.ready_sig.lock()
+	c.val = payload // finally.
 
-	c.send_ready = true
+	c.s_wg.done() // inform other send exists
 
-	for !c.receive_ready {
-
-	}
-
-	c.hear_val = a // mutate wrapped value.
-	c.ready_sig.unlock() // open a listener.
-
+	c.s_mu.unlock() // complete 
 	return
 }
 
-/* fn (c mut Chan) hear() []byte { */
-fn (c mut Chan) hear() string {
-	println('a')
-	c.hear_guard.lock()
-	for !c.send_ready {
-	
-	}
 
-	c.receive_ready = true
-	c.ready_sig.lock()
+pub fn (c mut Chan) recv() string {
+	c.r_mu.lock() // prevent other recv
 
-	i := c.hear_val
+	c.r_wg.done() // inform the send we exist
 
-	defer { c.reset() }
+	// err check
+	c.r_wait = true // tells close the step incremented
+	c.s_wg.wait() // detects send xists
+	c.r_wait = false // tells close we've passed the wait that might've needed help.
+
+	c.s_wg.add(1) // stops next recv from running without a send.
+
+	i := c.val
+	c.val = ''
+
+	defer { c.r_mu.unlock() }
 
 	return i
 }
-
-fn (c mut Chan) reset() {
-	c.send_ready = false
-	c.receive_ready = false
-	c.ready_sig.unlock()
-	c.send_guard.unlock()
-	c.hear_guard.unlock()
-}
-
