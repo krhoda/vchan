@@ -2,9 +2,9 @@ module vchan
 
 import sync
 
-struct Vchan {
+struct Vchan<T> {
 mut:
-	val string
+	val T
 
 	s_wait bool
 	s_mu sync.Mutex
@@ -15,7 +15,7 @@ mut:
 	r_wg sync.WaitGroup
 }
 
-pub fn new_vchan() &Vchan {
+pub fn new_vchan(a T) &Vchan<T> {
 	mut v := &Vchan{
 		val: ''
 	}
@@ -27,7 +27,7 @@ pub fn new_vchan() &Vchan {
 }
 
 
-pub fn (v mut Vchan) send(payload string) {
+pub fn (v mut Vchan<T>) send(payload T) {
 	v.s_mu.lock() // prevent other senders. if recieved, safe to mutate.
 
 	// err check
@@ -46,7 +46,7 @@ pub fn (v mut Vchan) send(payload string) {
 }
 
 
-pub fn (v mut Vchan) recv() string {
+pub fn (v mut Vchan<T>) recv() T {
 	v.r_mu.lock() // prevent other recv
 
 	v.r_wg.done() // inform the send we exist
