@@ -6,6 +6,9 @@ pub struct Vchan {
 mut:
 	val string
 
+	init bool
+	closed bool
+
 	s_wait bool
 	s_mu sync.Mutex
 	s_wg sync.WaitGroup
@@ -15,23 +18,30 @@ mut:
 	r_wg sync.WaitGroup
 }
 
-pub fn new_vchan() &Vchan {
-	mut v := &Vchan{
-		val: ''
-	}
+fn (v mut Vchan) is_alive() bool {
+	return v.init && !v.closed
+}
 
-	v.s_wg.add(1)
-	v.r_wg.add(1)
-
-	return v
+fn (v mut Vchan) is_dead() bool {
+	return !v.is_alive()
 }
 
 pub fn (v mut Vchan) init_chan() {
+	if v.init {
+		return
+	}
+
+	v.init = true
+	v.closed = false
 	v.s_wg.add(1)
 	v.r_wg.add(1)
 }
 
-pub fn (v mut Vchan) send(payload string) {
+pub fn (v mut Vchan) send(payload string) ?bool {
+	if v.is_dead() {
+		return error('Channel cannot be sent on. Closed: $v.closed, Initialized: $v.init')
+	}
+
 	v.s_mu.lock() // prevent other senders. if recieved, safe to mutate.
 
 	// err check
@@ -46,18 +56,25 @@ pub fn (v mut Vchan) send(payload string) {
 	v.s_wg.done() // inform other send exists
 
 	v.s_mu.unlock() // complete 
-	return
+
+	return true
 }
 
 
 pub fn (v mut Vchan) recv() string {
+	if v.is_dead() {
+		return ''
+		// return error('Channel cannot be recvd on. Closed: $v.closed, Initialized: $v.init')
+		// main.v:13:11: `?string` needs to have method `str() string` to be printable
+	}
+
 	v.r_mu.lock() // prevent other recv
 
 	v.r_wg.done() // inform the send we exist
 
 	// err check
 	v.r_wait = true // tells close the step incremented
-	v.s_wg.wait() // detects send xists
+	v.s_wg.wait() // detects send exists
 	v.r_wait = false // tells close we've passed the wait that might've needed help.
 
 	v.s_wg.add(1) // stops next recv from running without a send.
