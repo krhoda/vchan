@@ -2,7 +2,7 @@ module vchan
 
 import sync
 
-struct Vchan {
+pub struct Vchan {
 mut:
 	val string
 
@@ -26,6 +26,10 @@ pub fn new_vchan() &Vchan {
 	return v
 }
 
+pub fn (v mut Vchan) init_chan() {
+	v.s_wg.add(1)
+	v.r_wg.add(1)
+}
 
 pub fn (v mut Vchan) send(payload string) {
 	v.s_mu.lock() // prevent other senders. if recieved, safe to mutate.
