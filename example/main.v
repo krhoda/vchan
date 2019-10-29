@@ -8,7 +8,7 @@ fn main() {
 	mut c := &vchan.Vchan{}
 	c.init_chan()
 
-	go c.send(msg)
+	go c.send('Hi')
 	mut x := c.recv()
 	println(x)
 
@@ -16,13 +16,25 @@ fn main() {
 	x = c.recv()
 	println(x)
 
-	go c.send(msg)
+	go c.send('Yo')
 	go c.send(msg)
 
 	x = c.recv()
 	println(x)
-	x = c.recv()
-	println(x)
+
+	y := c.sample()
+	if y.good() {
+		println(y.get_val())
+	} else {
+		println('Y was bad!')
+	}
+
+	z := c.sample()
+	if z.good() {
+		println(z.get_val())
+	} else {
+		println('Z was bad!')
+	}
 
 	println('phew')
 }
