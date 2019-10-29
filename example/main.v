@@ -4,7 +4,7 @@ import vchan
 
 fn main() {
 	msg := 'TEST V'
-	mut c := vchan.new_vchan()
+	mut c := vchan.new_vchan(msg)
 
 	go c.send(msg)
 	mut x := c.recv()

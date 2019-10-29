@@ -16,9 +16,7 @@ mut:
 }
 
 pub fn new_vchan(a T) &Vchan<T> {
-	mut v := &Vchan{
-		val: ''
-	}
+	mut v := &Vchan<T>{}
 
 	v.s_wg.add(1)
 	v.r_wg.add(1)
@@ -59,7 +57,9 @@ pub fn (v mut Vchan<T>) recv() T {
 	v.s_wg.add(1) // stops next recv from running without a send.
 
 	i := v.val
-	v.val = ''
+	// NOTE: REMOVED RESETTING VAL TO ZERO VALUE.
+	// DOES IT NEED TO REPLACE WITH BOOL OF "fizzled" ALA GHCI SPARKS?
+	// v.val = ''
 
 	defer { v.r_mu.unlock() }
 
